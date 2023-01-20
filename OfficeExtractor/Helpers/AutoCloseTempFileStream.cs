@@ -217,7 +217,7 @@ namespace OfficeExtractor.Helpers
         /// <param name="disposeInputStream">   (Optional) True to dispose input stream. </param>
         ///-------------------------------------------------------------------------------------------------
 
-        public AutoCloseTempFileStream ( Stream inputStream, bool seekBegin = true, bool disposeInputStream = false )
+        public AutoCloseTempFileStream ( Stream inputStream, bool seekBegin = false, bool disposeInputStream = false )
             : this ()
         {
             try

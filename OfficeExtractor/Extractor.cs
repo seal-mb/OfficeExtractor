@@ -636,11 +636,10 @@ namespace OfficeExtractor
                 var manifestEntry = FindEntryByName(zipFile, "META-INF/manifest.xml");
                 if ( manifestEntry != null )
                 {
-                    using ( var manifestEntryStream = manifestEntry.OpenEntryStream () )
-                    using ( var manifestEntryMemoryStream = new AutoCloseTempFileStream () )
+                    using ( var manifestEntryMemoryStream = new AutoCloseTempFileStream ( manifestEntry.OpenEntryStream (), false,true ) )
                     {
-                        manifestEntryStream.CopyTo ( manifestEntryMemoryStream );
-                        manifestEntryMemoryStream.Position = 0;
+                        //manifestEntryStream.CopyTo ( manifestEntryMemoryStream );
+                        //manifestEntryMemoryStream.Position = 0;
                         using ( var streamReader = new StreamReader ( manifestEntryMemoryStream ) )
                         {
                             var manifest = streamReader.ReadToEnd();
