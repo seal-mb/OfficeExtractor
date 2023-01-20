@@ -28,10 +28,17 @@ using System.Text;
 
 namespace OfficeExtractor.Helpers
 {
+    ///-------------------------------------------------------------------------------------------------
+    /// <summary>   An automatic close temporary file stream. </summary>
+    ///
+    /// <remarks>   seal-mb, 20.01.2023. </remarks>
+    ///-------------------------------------------------------------------------------------------------
+
     internal class AutoCloseTempFileStream : IDisposable
     {
         #region IDisposable
-        private bool _disposedValue;
+
+        private bool _disposedValue = false;    ///< True if disposed.
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////
         /// <summary>
@@ -58,7 +65,7 @@ namespace OfficeExtractor.Helpers
                     _tempFile.Dispose ();
                 }
 
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: free unmanaged resources (unmanaged objects) and override finalize
                 // TODO: set large fields to null
                 try
                 {
@@ -107,8 +114,10 @@ namespace OfficeExtractor.Helpers
 
         #region Member
 
-        private String _fileName;
-        private Stream _tempFile;
+
+        private String _fileName;   ///< Filename of the file
+
+        private Stream _tempFile;   ///< The temporary file
 
         #endregion
 
