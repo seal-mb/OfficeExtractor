@@ -121,7 +121,7 @@ namespace OfficeExtractor
             {
                 var bytes = stream.GetData();
 
-                using (var memoryStream = new MemoryStream(bytes))
+                using (var memoryStream = new AutoCloseTempFileStream( bytes))
                 using (var binaryReader = new BinaryReader(memoryStream))
                 {
                     // Get the record type, at the beginning of the stream this should always be the BOF
@@ -207,6 +207,33 @@ namespace OfficeExtractor
                 throw new OEFileIsCorrupt("Could not check workbook visibility because the file seems to be corrupt", exception);
             }
         }
+
+        public static Stream SetWorkbookVisibility ( Stream spreadSheetDocument )
+        {
+            try
+            {
+                using ( var spreadsheetDocument = SpreadsheetDocument.Open ( spreadSheetDocument, true ) )
+                {
+                    var bookViews = spreadsheetDocument.WorkbookPart.Workbook.BookViews;
+                    foreach ( var bookView in bookViews )
+                    {
+                        var workBookView = (WorkbookView)bookView;
+                        if ( workBookView.Visibility.Value == VisibilityValues.Hidden ||
+                            workBookView.Visibility.Value == VisibilityValues.VeryHidden )
+                            workBookView.Visibility.Value = VisibilityValues.Visible;
+                    }
+
+                    spreadsheetDocument.WorkbookPart.Workbook.Save ();
+                }
+
+                return spreadSheetDocument;
+            }
+            catch ( Exception exception )
+            {
+                throw new OEFileIsCorrupt ( "Could not check workbook visibility because the file seems to be corrupt", exception );
+            }
+        }
+
         #endregion
     }
 }

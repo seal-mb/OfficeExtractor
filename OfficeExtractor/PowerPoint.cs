@@ -87,7 +87,7 @@ namespace OfficeExtractor
 
                 Logger.WriteToLog("PowerPoint Document stream found");
 
-                using (var memoryStream = new MemoryStream(stream.GetData()))
+                using (var memoryStream = new AutoCloseTempFileStream(stream.GetData()))
                 using (var binaryReader = new BinaryReader(memoryStream))
                 {
                     while (binaryReader.BaseStream.Position != memoryStream.Length)
@@ -124,7 +124,7 @@ namespace OfficeExtractor
                             {
                                 var decompressedSize = binaryReader.ReadUInt32();
                                 var data = binaryReader.ReadBytes((int)size - 4);
-                                var compressedMemoryStream = new MemoryStream(data);
+                                var compressedMemoryStream = new AutoCloseTempFileStream(data);
 
                                 // skip the first 2 bytes
                                 compressedMemoryStream.ReadByte();

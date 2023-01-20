@@ -60,10 +60,10 @@ namespace OfficeExtractor.Helpers
         {
             get
             {
-                if (_excel != null)
+                if ( _excel != null )
                     return _excel;
 
-                _excel = new Excel();
+                _excel = new Excel ();
                 return _excel;
             }
         }
@@ -75,12 +75,12 @@ namespace OfficeExtractor.Helpers
         /// </summary>
         /// <param name="bytes"></param>
         /// <returns></returns>
-        public bool IsCompoundFile(byte[] bytes)
+        public bool IsCompoundFile ( byte[] bytes )
         {
-            if (bytes == null || bytes.Length < 2)
+            if ( bytes == null || bytes.Length < 2 )
                 return false;
 
-            return (bytes[0] == 0xD0 && bytes[1] == 0xCF);
+            return ( bytes[0] == 0xD0 && bytes[1] == 0xCF );
         }
         #endregion
 
@@ -90,48 +90,49 @@ namespace OfficeExtractor.Helpers
         /// </summary>
         /// <param name="zipEntry"></param>
         /// <returns></returns>
-        internal string GetFileNameFromObjectReplacementFile(SharpCompress.Archives.IArchiveEntry zipEntry)
+        internal string GetFileNameFromObjectReplacementFile ( SharpCompress.Archives.IArchiveEntry zipEntry )
         {
-            Logger.WriteToLog("Trying to get original filename from ObjectReplacement file");
+            Logger.WriteToLog ( "Trying to get original filename from ObjectReplacement file" );
 
             try
             {
-                using (var zipEntryStream = zipEntry.OpenEntryStream())
-                using (var zipEntryMemoryStream = new MemoryStream())
+                using ( var zipEntryFileStream = new AutoCloseTempFileStream ( zipEntry.OpenEntryStream (), false,true) )
                 {
-                    zipEntryStream.CopyTo(zipEntryMemoryStream);
-                    zipEntryMemoryStream.Position = 0x4470;
-                    using (var binaryReader = new BinaryReader(zipEntryMemoryStream))
+               
+                    zipEntryFileStream.Position = 0x4470;
+                    using ( var binaryReader = new BinaryReader ( zipEntryFileStream ) )
                     {
-                        while (binaryReader.BaseStream.Position != binaryReader.BaseStream.Length)
+                        while ( binaryReader.BaseStream.Position != binaryReader.BaseStream.Length )
                         {
                             var value = binaryReader.ReadUInt16();
 
                             // We have found the start position from where we are going to read
                             // the original filename
-                            if (value != 0x8000 || binaryReader.PeekChar() != 0x46) continue;
+                            if ( value != 0x8000 || binaryReader.PeekChar () != 0x46 )
+                                continue;
                             // Skip the peeked char
-                            zipEntryMemoryStream.Position += 2;
+                            zipEntryFileStream.Position += 2;
 
                             // Read until we find the next 0x46 value
-                            while (binaryReader.BaseStream.Position != binaryReader.BaseStream.Length)
+                            while ( binaryReader.BaseStream.Position != binaryReader.BaseStream.Length )
                             {
-                                value = binaryReader.ReadUInt16();
-                                if (value != 0x46) continue;
+                                value = binaryReader.ReadUInt16 ();
+                                if ( value != 0x46 )
+                                    continue;
                                 // Skip the next 6 bytes
-                                binaryReader.ReadBytes(6);
+                                binaryReader.ReadBytes ( 6 );
 
                                 // Get the length of name string
                                 var length = binaryReader.ReadUInt16();
 
                                 // Skip the next 2 bytes
-                                zipEntryMemoryStream.Position += 2;
+                                zipEntryFileStream.Position += 2;
 
                                 // Read the filename bytes
                                 var fileNameBytes = binaryReader.ReadBytes(length);
                                 var fileName = Encoding.Unicode.GetString(fileNameBytes);
-                                fileName = fileName.Replace("\0", string.Empty);
-                                Logger.WriteToLog($"Filename '{fileName}' found");
+                                fileName = fileName.Replace ( "\0", string.Empty );
+                                Logger.WriteToLog ( $"Filename '{fileName}' found" );
                                 return fileName;
                             }
                         }
@@ -155,11 +156,11 @@ namespace OfficeExtractor.Helpers
         /// <param name="outputFolder">The outputFolder</param>
         /// <returns></returns>
         /// <exception cref="Exceptions.OEFileIsPasswordProtected">Raised when a WordDocument, WorkBook or PowerPoint Document stream is password protected</exception>
-        internal string SaveFromStorageNode(byte[] bytes, string outputFolder)
+        internal string SaveFromStorageNode ( byte[] bytes, string outputFolder )
         {
-            using (var memoryStream = new MemoryStream(bytes))
-            using (var compoundFile = new CompoundFile(memoryStream))
-                return SaveFromStorageNode(compoundFile.RootStorage, outputFolder, null);
+            using ( var memoryStream = new AutoCloseTempFileStream ( bytes ) )
+            using ( var compoundFile = new CompoundFile ( memoryStream ) )
+                return SaveFromStorageNode ( compoundFile.RootStorage, outputFolder, null );
         }
 
         /// <summary>
@@ -170,11 +171,11 @@ namespace OfficeExtractor.Helpers
         /// <param name="fileName">The fileName to use, null when the fileName is unknown</param>
         /// <returns></returns>
         /// <exception cref="Exceptions.OEFileIsPasswordProtected">Raised when a WordDocument, WorkBook or PowerPoint Document stream is password protected</exception>
-        internal string SaveFromStorageNode(byte[] bytes, string outputFolder, string fileName)
+        internal string SaveFromStorageNode ( byte[] bytes, string outputFolder, string fileName )
         {
-            using (var memoryStream = new MemoryStream(bytes))
-            using (var compoundFile = new CompoundFile(memoryStream))
-                return SaveFromStorageNode(compoundFile.RootStorage, outputFolder, fileName);
+            using ( var memoryStream = new AutoCloseTempFileStream ( bytes ) )
+            using ( var compoundFile = new CompoundFile ( memoryStream ) )
+                return SaveFromStorageNode ( compoundFile.RootStorage, outputFolder, fileName );
         }
 
         /// <summary>
@@ -184,9 +185,9 @@ namespace OfficeExtractor.Helpers
         /// <param name="outputFolder">The outputFolder</param>
         /// <returns></returns>
         /// <exception cref="Exceptions.OEFileIsPasswordProtected">Raised when a WordDocument, WorkBook or PowerPoint Document stream is password protected</exception>
-        internal string SaveFromStorageNode(CFStorage storage, string outputFolder)
+        internal string SaveFromStorageNode ( CFStorage storage, string outputFolder )
         {
-            return SaveFromStorageNode(storage, outputFolder, null);
+            return SaveFromStorageNode ( storage, outputFolder, null );
         }
 
         /// <summary>
@@ -197,107 +198,113 @@ namespace OfficeExtractor.Helpers
         /// <param name="fileName">The fileName to use, null when the fileName is unknown</param>
         /// <returns>Returns the name of the created file that or null if there was nothing to export within the given <paramref name="storage"/> node.</returns>
         /// <exception cref="Exceptions.OEFileIsPasswordProtected">Raised when a WordDocument, WorkBook or PowerPoint Document stream is password protected</exception>
-        public string SaveFromStorageNode(CFStorage storage, string outputFolder, string fileName)
+        public string SaveFromStorageNode ( CFStorage storage, string outputFolder, string fileName )
         {
-            Logger.WriteToLog($"Saving CFStorage to output folder '{outputFolder}' with file name {fileName}");
+            Logger.WriteToLog ( $"Saving CFStorage to output folder '{outputFolder}' with file name {fileName}" );
 
-            if (storage.TryGetStream("CONTENTS", out var contents))
+            if ( storage.TryGetStream ( "CONTENTS", out var contents ) )
             {
-                Logger.WriteToLog("CONTENTS stream found");
+                Logger.WriteToLog ( "CONTENTS stream found" );
 
-                if (contents.Size <= 0)
+                if ( contents.Size <= 0 )
                 {
-                    Logger.WriteToLog("CONTENTS stream is empty");
+                    Logger.WriteToLog ( "CONTENTS stream is empty" );
                     return null;
                 }
 
-                if (string.IsNullOrWhiteSpace(fileName)) fileName = DefaultEmbeddedObjectName;
+                if ( string.IsNullOrWhiteSpace ( fileName ) )
+                    fileName = DefaultEmbeddedObjectName;
 
                 const string delimiter = "%DocumentOle:";
                 var documentOleFileName = GetDelimitedStringFromData(delimiter, contents.GetData());
-                if (documentOleFileName != null)
+                if ( documentOleFileName != null )
                 {
-                    if (!documentOleFileName.Equals(string.Empty))
-                        fileName = Path.GetFileName(documentOleFileName);
-                    contents.SetData(contents.GetData().Skip(delimiter.Length * 2 + documentOleFileName.Length).ToArray());
+                    if ( !documentOleFileName.Equals ( string.Empty ) )
+                        fileName = Path.GetFileName ( documentOleFileName );
+                    contents.SetData ( contents.GetData ().Skip ( delimiter.Length * 2 + documentOleFileName.Length ).ToArray () );
                 }
 
-                return SaveByteArrayToFile(contents.GetData(), FileManager.FileExistsMakeNew(Path.Combine(outputFolder, fileName)));
+                return SaveByteArrayToFile ( contents.GetData (), FileManager.FileExistsMakeNew ( Path.Combine ( outputFolder, fileName ) ) );
             }
 
-            if(storage.TryGetStream("Package", out var package))
+            if ( storage.TryGetStream ( "Package", out var package ) )
             {
-                Logger.WriteToLog("Package stream found");
+                Logger.WriteToLog ( "Package stream found" );
 
-                if (package.Size <= 0)
+                if ( package.Size <= 0 )
                 {
-                    Logger.WriteToLog("Package stream is empty");
+                    Logger.WriteToLog ( "Package stream is empty" );
                     return null;
                 }
 
-                if (string.IsNullOrWhiteSpace(fileName)) fileName = DefaultEmbeddedObjectName;
-                return SaveByteArrayToFile(package.GetData(), FileManager.FileExistsMakeNew(Path.Combine(outputFolder, fileName)));
+                if ( string.IsNullOrWhiteSpace ( fileName ) )
+                    fileName = DefaultEmbeddedObjectName;
+                return SaveByteArrayToFile ( package.GetData (), FileManager.FileExistsMakeNew ( Path.Combine ( outputFolder, fileName ) ) );
             }
 
-            if (storage.TryGetStream("EmbeddedOdf", out var embeddedOdf))
+            if ( storage.TryGetStream ( "EmbeddedOdf", out var embeddedOdf ) )
             {
-                Logger.WriteToLog("EmbeddedOdf stream found");
+                Logger.WriteToLog ( "EmbeddedOdf stream found" );
 
                 // The embedded object is an Embedded ODF file
-                if (embeddedOdf.Size <= 0)
+                if ( embeddedOdf.Size <= 0 )
                 {
-                    Logger.WriteToLog("EmbeddedOdf stream is empty");
+                    Logger.WriteToLog ( "EmbeddedOdf stream is empty" );
                     return null;
                 }
 
-                if (string.IsNullOrWhiteSpace(fileName)) fileName = DefaultEmbeddedObjectName;
-                return SaveByteArrayToFile(embeddedOdf.GetData(), FileManager.FileExistsMakeNew(Path.Combine(outputFolder, fileName)));
+                if ( string.IsNullOrWhiteSpace ( fileName ) )
+                    fileName = DefaultEmbeddedObjectName;
+                return SaveByteArrayToFile ( embeddedOdf.GetData (), FileManager.FileExistsMakeNew ( Path.Combine ( outputFolder, fileName ) ) );
             }
 
-            if (storage.TryGetStream("\x0001Ole10Native", out _))
+            if ( storage.TryGetStream ( "\x0001Ole10Native", out _ ) )
             {
-                Logger.WriteToLog("Ole10Native stream found");
+                Logger.WriteToLog ( "Ole10Native stream found" );
 
                 var ole10Native = new Ole10Native(storage);
-                Logger.WriteToLog($"Ole10Native stream format is '{ole10Native.Format}'");
+                Logger.WriteToLog ( $"Ole10Native stream format is '{ole10Native.Format}'" );
 
-                if (ole10Native.Format == OleFormat.File)
-                    return SaveByteArrayToFile(ole10Native.NativeData,
-                        FileManager.FileExistsMakeNew(Path.Combine(outputFolder, ole10Native.FileName)));
+                if ( ole10Native.Format == OleFormat.File )
+                    return SaveByteArrayToFile ( ole10Native.NativeData,
+                        FileManager.FileExistsMakeNew ( Path.Combine ( outputFolder, ole10Native.FileName ) ) );
 
-                Logger.WriteToLog("Ole10Native is ignored");
+                Logger.WriteToLog ( "Ole10Native is ignored" );
                 return null;
 
             }
 
-            if (storage.TryGetStream("WordDocument", out _))
+            if ( storage.TryGetStream ( "WordDocument", out _ ) )
             {
-                Logger.WriteToLog("WordDocument stream found");
+                Logger.WriteToLog ( "WordDocument stream found" );
 
                 // The embedded object is a Word file
-                if (string.IsNullOrWhiteSpace(fileName)) fileName = "Embedded Word document.doc";
-                return SaveStorageTreeToCompoundFile(storage, FileManager.FileExistsMakeNew(Path.Combine(outputFolder, fileName)));
+                if ( string.IsNullOrWhiteSpace ( fileName ) )
+                    fileName = "Embedded Word document.doc";
+                return SaveStorageTreeToCompoundFile ( storage, FileManager.FileExistsMakeNew ( Path.Combine ( outputFolder, fileName ) ) );
             }
-            
-            if (storage.TryGetStream("Workbook", out _))
+
+            if ( storage.TryGetStream ( "Workbook", out _ ) )
             {
-                Logger.WriteToLog("Workbook stream found");
+                Logger.WriteToLog ( "Workbook stream found" );
 
                 // The embedded object is an Excel file   
-                if (string.IsNullOrWhiteSpace(fileName)) fileName = "Embedded Excel document.xls";
-                Excel.SetWorkbookVisibility(storage);
-                return SaveStorageTreeToCompoundFile(storage, FileManager.FileExistsMakeNew(Path.Combine(outputFolder, fileName)));
+                if ( string.IsNullOrWhiteSpace ( fileName ) )
+                    fileName = "Embedded Excel document.xls";
+                Excel.SetWorkbookVisibility ( storage );
+                return SaveStorageTreeToCompoundFile ( storage, FileManager.FileExistsMakeNew ( Path.Combine ( outputFolder, fileName ) ) );
             }
-            
-            if (storage.TryGetStream("PowerPoint Document", out _))
+
+            if ( storage.TryGetStream ( "PowerPoint Document", out _ ) )
             {
-                Logger.WriteToLog("PowerPoint Document stream found");
+                Logger.WriteToLog ( "PowerPoint Document stream found" );
 
                 // The embedded object is a PowerPoint file
-                if (string.IsNullOrWhiteSpace(fileName)) fileName = "Embedded PowerPoint document.ppt";
-                return SaveStorageTreeToCompoundFile(storage, FileManager.FileExistsMakeNew(Path.Combine(outputFolder, fileName)));
+                if ( string.IsNullOrWhiteSpace ( fileName ) )
+                    fileName = "Embedded PowerPoint document.ppt";
+                return SaveStorageTreeToCompoundFile ( storage, FileManager.FileExistsMakeNew ( Path.Combine ( outputFolder, fileName ) ) );
             }
-            
+
             return null;
         }
         #endregion
@@ -308,16 +315,16 @@ namespace OfficeExtractor.Helpers
         /// </summary>
         /// <param name="storage"></param>
         /// <param name="fileName">The filename with path for the new compound file</param>
-        internal string SaveStorageTreeToCompoundFile(CFStorage storage, string fileName)
+        internal string SaveStorageTreeToCompoundFile ( CFStorage storage, string fileName )
         {
-            Logger.WriteToLog($"Saving storage tree to compound file '{fileName}'");
+            Logger.WriteToLog ( $"Saving storage tree to compound file '{fileName}'" );
 
-            fileName = FileManager.FileExistsMakeNew(fileName);
+            fileName = FileManager.FileExistsMakeNew ( fileName );
 
-            using (var compoundFile = new CompoundFile())
+            using ( var compoundFile = new CompoundFile () )
             {
-                GetStorageChain(compoundFile.RootStorage, storage);
-                compoundFile.Save(fileName);
+                GetStorageChain ( compoundFile.RootStorage, storage );
+                compoundFile.Save ( fileName );
             }
 
             return fileName;
@@ -328,28 +335,29 @@ namespace OfficeExtractor.Helpers
         /// </summary>
         /// <param name="rootStorage"></param>
         /// <param name="storage"></param>
-        private static void GetStorageChain(CFStorage rootStorage, CFStorage storage)
+        private static void GetStorageChain ( CFStorage rootStorage, CFStorage storage )
         {
-            Logger.WriteToLog("Copying storage to compound file");
+            Logger.WriteToLog ( "Copying storage to compound file" );
 
-            void Entries(CFItem item)
+            void Entries ( CFItem item )
             {
-                if (item.IsStorage)
+                if ( item.IsStorage )
                 {
                     var newRootStorage = rootStorage.AddStorage(item.Name);
-                    GetStorageChain(newRootStorage, item as CFStorage);
+                    GetStorageChain ( newRootStorage, item as CFStorage );
                 }
-                else if (item.IsStream)
+                else if ( item.IsStream )
                 {
                     var childStream = item as CFStream;
-                    if (childStream == null) return;
+                    if ( childStream == null )
+                        return;
                     var stream = rootStorage.AddStream(item.Name);
                     var bytes = childStream.GetData();
-                    stream.SetData(bytes);
+                    stream.SetData ( bytes );
                 }
             }
 
-            storage.VisitEntries(Entries, false);
+            storage.VisitEntries ( Entries, false );
         }
         #endregion
 
@@ -361,50 +369,51 @@ namespace OfficeExtractor.Helpers
         /// <param name="outputFile">The output filename with path</param>
         /// <returns></returns>
         /// <exception cref="OfficeExtractor.Exceptions.OEFileIsCorrupt">Raised when the file is corrupt</exception> 
-        internal string SaveByteArrayToFile(byte[] data, string outputFile)
+        internal string SaveByteArrayToFile ( byte[] data, string outputFile )
         {
             // seal-mb
             // Check name of file
             // maybe the name contains question marks, because the OLE Bin file
             // use it fore UNICODE signs
-            if( Extractor.ReplaceDisallowedCharsInFileNames)
+            if ( Extractor.ReplaceDisallowedCharsInFileNames )
             {
                 var fileName = FileManager.RemoveInvalidFileNameChars( Path.GetFileName(outputFile) );
-                outputFile = Path.Combine( Path.GetDirectoryName(outputFile), fileName );
+                outputFile = Path.Combine ( Path.GetDirectoryName ( outputFile ), fileName );
             }
-           
+
 
             // Because the data is stored in a stream we have no name for it so we
             // have to check the magic bytes to see with what kind of file we are dealing
-            Logger.WriteToLog($"Saving byte array with length '{data.Length}' to file '{outputFile}'");
+            Logger.WriteToLog ( $"Saving byte array with length '{data.Length}' to file '{outputFile}'" );
 
             var extension = Path.GetExtension(outputFile);
 
-            if (string.IsNullOrEmpty(extension))
+            if ( string.IsNullOrEmpty ( extension ) )
             {
                 var fileType = FileTypeSelector.GetFileTypeFileInfo(data);
-                if (fileType != null && !string.IsNullOrEmpty(fileType.Extension))
+                if ( fileType != null && !string.IsNullOrEmpty ( fileType.Extension ) )
                     outputFile += "." + fileType.Extension;
 
-                if (fileType != null)
+                if ( fileType != null )
                     extension = "." + fileType.Extension;
             }
 
             // Check if the output file already exists and if so make a new one
-            outputFile = FileManager.FileExistsMakeNew(outputFile);
+            outputFile = FileManager.FileExistsMakeNew ( outputFile );
 
-            if (extension != null)
+            if ( extension != null )
             {
-                switch (extension.ToUpperInvariant())
+                switch ( extension.ToUpperInvariant () )
                 {
                     case ".XLS":
                     case ".XLT":
                     case ".XLW":
-                        using (var memoryStream = new MemoryStream(data))
-                        using (var compoundFile = new CompoundFile(memoryStream))
+                        // using (var memoryStream = new MemoryStream(data))
+                        using ( AutoCloseTempFileStream memoryStream = data )
+                        using ( var compoundFile = new CompoundFile ( memoryStream ) )
                         {
-                            Excel.SetWorkbookVisibility(compoundFile.RootStorage);
-                            compoundFile.Save(outputFile);
+                            Excel.SetWorkbookVisibility ( compoundFile.RootStorage );
+                            compoundFile.Save ( outputFile );
                         }
                         break;
 
@@ -413,42 +422,47 @@ namespace OfficeExtractor.Helpers
                     case ".XLSX":
                     case ".XLTM":
                     case ".XLTX":
-                        using (var memoryStream = new MemoryStream(data))
+                        // using (var memoryStream = new MemoryStream(data))
+                        using ( AutoCloseTempFileStream memoryStream = data )
                         {
                             var file = Excel.SetWorkbookVisibility(memoryStream);
-                            File.WriteAllBytes(outputFile, file.ToArray());
+                            //File.WriteAllBytes(outputFile, file.ToArray());
+                            using(var outFile = new FileStream( outputFile ,FileMode.Create,FileAccess.ReadWrite,FileShare.None,4096) )
+                            {
+                                file.CopyTo ( outFile );
+                            }
                         }
                         break;
 
                     default:
-                        File.WriteAllBytes(outputFile, data);
+                        File.WriteAllBytes ( outputFile, data );
                         break;
                 }
             }
             else
-                File.WriteAllBytes(outputFile, data);
+                File.WriteAllBytes ( outputFile, data );
 
             return outputFile;
         }
         #endregion
 
         #region Storage Node Content Parsing
-        private string GetDelimitedStringFromData(string delimiter, ICollection<byte> data)
+        private string GetDelimitedStringFromData ( string delimiter, ICollection<byte> data )
         {
             string delimitedString = null;
-            if (!string.IsNullOrWhiteSpace(delimiter) && data != null && data.Count > 0)
+            if ( !string.IsNullOrWhiteSpace ( delimiter ) && data != null && data.Count > 0 )
             {
                 // Check if data has at least the length of opening plus closing delimiter
-                if (data.Count >= delimiter.Length * 2)
+                if ( data.Count >= delimiter.Length * 2 )
                 {
                     // Check if data contains the delimiter
-                    if (delimiter.Equals(Encoding.UTF8.GetString(data.Take(delimiter.Length).ToArray())))
+                    if ( delimiter.Equals ( Encoding.UTF8.GetString ( data.Take ( delimiter.Length ).ToArray () ) ) )
                     {
                         // Read the data after opening delimiter until first sign of the closing delimiter
-                        delimitedString = Encoding.UTF8.GetString(data
-                            .Skip(delimiter.Length)
-                            .TakeWhile(b => Convert.ToChar(b) != delimiter.First())
-                            .ToArray());
+                        delimitedString = Encoding.UTF8.GetString ( data
+                            .Skip ( delimiter.Length )
+                            .TakeWhile ( b => Convert.ToChar ( b ) != delimiter.First () )
+                            .ToArray () );
                     }
                 }
             }
@@ -456,6 +470,6 @@ namespace OfficeExtractor.Helpers
         }
         #endregion
 
-        
+
     }
 }

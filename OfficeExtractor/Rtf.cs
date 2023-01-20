@@ -88,7 +88,7 @@ namespace OfficeExtractor
 
                     if (!RtfParser.Reader.MoveToNextControlWord(enumerator, "objdata")) continue;
                     var data = RtfParser.Reader.GetNextTextAsByteArray(enumerator);
-                    using (var stream = new MemoryStream(data))
+                    using (var stream = new AutoCloseTempFileStream (data))
                     {
                         switch (className)
                         {
@@ -185,7 +185,7 @@ namespace OfficeExtractor
             var ole10 = new Ole10(stream);
 
             // After that it is wrapped in a compound document
-            using (var internalStream = new MemoryStream(ole10.NativeData))
+            using (var internalStream = new AutoCloseTempFileStream(ole10.NativeData))
             using (var compoundFile = new CompoundFile(internalStream))
             {
                 string fileName = null;

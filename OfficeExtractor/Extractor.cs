@@ -43,6 +43,33 @@ namespace OfficeExtractor
     /// </summary>
     public class Extractor
     {
+        #region Const values
+
+        public const String EmbeddingPartString_Word = "/word/embeddings/";
+        public const String EmbeddingPartString_Excel = "/xl/embeddings/";
+        public const String EmbeddingPartString_PowerPoint = "/ppt/embeddings/";
+        public const String EmbeddingPartString_Visio = "/visio/embeddings/";
+
+        #endregion
+
+        #region Events
+
+        /// <summary>   Event queue for all listeners interested in BeforeOfficeXmlExtract events. </summary>
+        public event DelegateBeforeOfficeXmlExtract BeforeOfficeXmlExtract = null;
+
+        /// <summary>   Event queue for all listeners interested in AfterOfficeXmlExctract events. </summary>
+        public event DelegateAfterOfficeXmlExctract AfterOfficeXmlExctract = null;
+
+        ///-------------------------------------------------------------------------------------------------
+        /// <summary>
+        ///     Event queue for all listeners interested in ErrorOfficeXmlExctractor events.
+        /// </summary>
+        ///-------------------------------------------------------------------------------------------------
+
+        public event DelegateErrorOfficeXmlExctract ErrorOfficeXmlExctractor = null;
+
+        #endregion
+
         #region Fields
         /// <summary>
         ///     <see cref="Checker"/>
@@ -106,10 +133,10 @@ namespace OfficeExtractor
         {
             get
             {
-                if (_word != null)
+                if ( _word != null )
                     return _word;
 
-                _word = new Word();
+                _word = new Word ();
                 return _word;
             }
         }
@@ -122,10 +149,10 @@ namespace OfficeExtractor
         {
             get
             {
-                if (_excel != null)
+                if ( _excel != null )
                     return _excel;
 
-                _excel = new Excel();
+                _excel = new Excel ();
                 return _excel;
             }
         }
@@ -138,10 +165,10 @@ namespace OfficeExtractor
         {
             get
             {
-                if (_powerPoint != null)
+                if ( _powerPoint != null )
                     return _powerPoint;
 
-                _powerPoint = new PowerPoint();
+                _powerPoint = new PowerPoint ();
                 return _powerPoint;
             }
         }
@@ -154,10 +181,10 @@ namespace OfficeExtractor
         {
             get
             {
-                if (_rtf != null)
+                if ( _rtf != null )
                     return _rtf;
 
-                _rtf = new Rtf();
+                _rtf = new Rtf ();
                 return _rtf;
             }
         }
@@ -170,10 +197,10 @@ namespace OfficeExtractor
         {
             get
             {
-                if (_extraction != null)
+                if ( _extraction != null )
                     return _extraction;
 
-                _extraction = new Extraction();
+                _extraction = new Extraction ();
                 return _extraction;
             }
         }
@@ -185,7 +212,7 @@ namespace OfficeExtractor
         /// </summary>
         /// <param name="logStream">When set then logging is written to this stream for all extractions. If
         /// you want a separate log for each conversion then set the logstream on the <see cref="Extract"/> method</param>
-        public Extractor(Stream logStream = null)
+        public Extractor ( Stream logStream = null )
         {
             Logger.LogStream = logStream;
         }
@@ -200,19 +227,19 @@ namespace OfficeExtractor
         /// <exception cref="ArgumentNullException">Raised when the <paramref name="inputFile"/> or <paramref name="outputFolder"/> is null or empty</exception>
         /// <exception cref="FileNotFoundException">Raised when the <paramref name="inputFile"/> does not exists</exception>
         /// <exception cref="DirectoryNotFoundException">Raised when the <paramref name="outputFolder"/> does not exists</exception>
-        private static void CheckFileNameAndOutputFolder(string inputFile, string outputFolder)
+        private static void CheckFileNameAndOutputFolder ( string inputFile, string outputFolder )
         {
-            if (string.IsNullOrEmpty(inputFile))
-                throw new ArgumentNullException(inputFile);
+            if ( string.IsNullOrEmpty ( inputFile ) )
+                throw new ArgumentNullException ( inputFile );
 
-            if (string.IsNullOrEmpty(outputFolder))
-                throw new ArgumentNullException(outputFolder);
+            if ( string.IsNullOrEmpty ( outputFolder ) )
+                throw new ArgumentNullException ( outputFolder );
 
-            if (!File.Exists(inputFile))
-                throw new FileNotFoundException(inputFile);
+            if ( !File.Exists ( inputFile ) )
+                throw new FileNotFoundException ( inputFile );
 
-            if (!Directory.Exists(outputFolder))
-                throw new DirectoryNotFoundException(outputFolder);
+            if ( !Directory.Exists ( outputFolder ) )
+                throw new DirectoryNotFoundException ( outputFolder );
         }
         #endregion
 
@@ -222,12 +249,12 @@ namespace OfficeExtractor
         /// </summary>
         /// <param name="inputFile">The file to check</param>
         /// <returns></returns>
-        private static string GetExtension(string inputFile)
+        private static string GetExtension ( string inputFile )
         {
             var extension = Path.GetExtension(inputFile);
-            extension = string.IsNullOrEmpty(extension) ? string.Empty : extension.ToUpperInvariant();
+            extension = string.IsNullOrEmpty ( extension ) ? string.Empty : extension.ToUpperInvariant ();
 
-            switch (extension)
+            switch ( extension )
             {
                 case ".RTF":
                 case ".ODT":
@@ -237,20 +264,20 @@ namespace OfficeExtractor
 
                 default:
 
-                    using (var fileStream = File.OpenRead(inputFile))
+                    using ( var fileStream = File.OpenRead ( inputFile ) )
                     {
                         var header = new byte[2];
-                        fileStream.Read(header, 0, 2);
+                        fileStream.Read ( header, 0, 2 );
 
                         // 50 4B = PK --> .doc = 4
-                        if (header[0] == 0x50 && header[1] == 0x4B && extension.Length == 4)
+                        if ( header[0] == 0x50 && header[1] == 0x4B && extension.Length == 4 )
                         {
                             extension += "X";
                         }
                         // D0 CF = DI --> .docx = 5
-                        else if (header[0] == 0xD0 && header[1] == 0xCF)
+                        else if ( header[0] == 0xD0 && header[1] == 0xCF )
                         {
-                            extension = extension.Substring(0, 4);
+                            extension = extension.Substring ( 0, 4 );
                         }
                     }
                     break;
@@ -261,11 +288,11 @@ namespace OfficeExtractor
         #endregion
 
         #region ThrowPasswordProtected
-        private void ThrowPasswordProtected(string inputFile)
+        private void ThrowPasswordProtected ( string inputFile )
         {
             var message = $"The file '{Path.GetFileName(inputFile)}' is password protected";
-            Logger.WriteToLog(message);
-            throw new OEFileIsPasswordProtected(message);
+            Logger.WriteToLog ( message );
+            throw new OEFileIsPasswordProtected ( message );
         }
         #endregion
 
@@ -285,66 +312,66 @@ namespace OfficeExtractor
         /// <exception cref="OEFileIsCorrupt">Raised when the <paramref name="inputFile" /> is corrupt</exception>
         /// <exception cref="OEFileTypeNotSupported">Raised when the <paramref name="inputFile"/> is not supported</exception>
         /// <exception cref="OEFileIsPasswordProtected">Raised when the <paramref name="inputFile"/> is password protected</exception>
-        public List<string> Extract(string inputFile, string outputFolder, Stream logStream = null, bool attachmentsOnly = false)
+        public List<string> Extract ( string inputFile, string outputFolder, Stream logStream = null, bool attachmentsOnly = false )
         {
-            if (logStream != null)
+            if ( logStream != null )
                 Logger.LogStream = logStream;
 
-            CheckFileNameAndOutputFolder(inputFile, outputFolder);
+            CheckFileNameAndOutputFolder ( inputFile, outputFolder );
 
             var extension = GetExtension(inputFile);
 
-            Logger.WriteToLog($"Checking if file '{inputFile}' contains any embeded objects");
-            
-            outputFolder = FileManager.CheckForDirectorySeparator(outputFolder);
+            Logger.WriteToLog ( $"Checking if file '{inputFile}' contains any embeded objects" );
+
+            outputFolder = FileManager.CheckForDirectorySeparator ( outputFolder );
 
             List<string> result;
 
             try
             {
-                switch (extension)
+                switch ( extension )
                 {
                     case ".ODT":
                     case ".ODS":
                     case ".ODP":
-                        if(_passwordProtectedChecker.IsFileProtected(inputFile).Protected)
-                            ThrowPasswordProtected(inputFile);
+                        if ( _passwordProtectedChecker.IsFileProtected ( inputFile ).Protected )
+                            ThrowPasswordProtected ( inputFile );
 
-                        result = ExtractFromOpenDocumentFormat(inputFile, outputFolder, "OpenOffice");
+                        result = ExtractFromOpenDocumentFormat ( inputFile, outputFolder, "OpenOffice" );
                         break;
 
                     case ".DOC":
                     case ".DOT":
-                        if(_passwordProtectedChecker.IsFileProtected(inputFile).Protected)
-                            ThrowPasswordProtected(inputFile);
+                        if ( _passwordProtectedChecker.IsFileProtected ( inputFile ).Protected )
+                            ThrowPasswordProtected ( inputFile );
 
                         // Word 97 - 2003
-                        result = Word.Extract(inputFile, outputFolder, attachmentsOnly);
+                        result = Word.Extract ( inputFile, outputFolder, attachmentsOnly );
                         break;
 
                     case ".DOCM":
                     case ".DOCX":
                     case ".DOTM":
                     case ".DOTX":
-                        if(_passwordProtectedChecker.IsFileProtected(inputFile).Protected)
-                            ThrowPasswordProtected(inputFile);
+                        if ( _passwordProtectedChecker.IsFileProtected ( inputFile ).Protected )
+                            ThrowPasswordProtected ( inputFile );
 
                         // Word 2007 - 2013
-                        result = ExtractFromOfficeOpenXmlFormat(inputFile, "/word/embeddings/", outputFolder, "Word");
+                        result = ExtractFromOfficeOpenXmlFormat ( inputFile, EmbeddingPartString_Word, outputFolder, "Word" );
                         break;
 
                     case ".RTF":
-                        result = Rtf.Extract(inputFile, outputFolder);
+                        result = Rtf.Extract ( inputFile, outputFolder );
                         break;
 
                     case ".XLS":
                     case ".XLT":
                     case ".XLW":
-                        if(_passwordProtectedChecker.IsFileProtected(inputFile).Protected)
-                            ThrowPasswordProtected(inputFile);
+                        if ( _passwordProtectedChecker.IsFileProtected ( inputFile ).Protected )
+                            ThrowPasswordProtected ( inputFile );
 
                         // Excel 97 - 2003
-                        result = Excel.Extract(inputFile, outputFolder);
+                        result = Excel.Extract ( inputFile, outputFolder );
                         break;
 
                     case ".XLSB":
@@ -352,21 +379,21 @@ namespace OfficeExtractor
                     case ".XLSX":
                     case ".XLTM":
                     case ".XLTX":
-                        if(_passwordProtectedChecker.IsFileProtected(inputFile).Protected)
-                            ThrowPasswordProtected(inputFile);
+                        if ( _passwordProtectedChecker.IsFileProtected ( inputFile ).Protected )
+                            ThrowPasswordProtected ( inputFile );
 
                         // Excel 2007 - 2013
-                        result = ExtractFromOfficeOpenXmlFormat(inputFile, "/xl/embeddings/", outputFolder, "Excel");
+                        result = ExtractFromOfficeOpenXmlFormat ( inputFile, EmbeddingPartString_Excel, outputFolder, "Excel" );
                         break;
 
                     case ".POT":
                     case ".PPT":
                     case ".PPS":
-                        if(_passwordProtectedChecker.IsFileProtected(inputFile).Protected)
-                            ThrowPasswordProtected(inputFile);
+                        if ( _passwordProtectedChecker.IsFileProtected ( inputFile ).Protected )
+                            ThrowPasswordProtected ( inputFile );
 
                         // PowerPoint 97 - 2003
-                        result = PowerPoint.Extract(inputFile, outputFolder);
+                        result = PowerPoint.Extract ( inputFile, outputFolder );
                         break;
 
                     case ".POTM":
@@ -375,34 +402,43 @@ namespace OfficeExtractor
                     case ".PPSX":
                     case ".PPTM":
                     case ".PPTX":
-                        if(_passwordProtectedChecker.IsFileProtected(inputFile).Protected)
-                            ThrowPasswordProtected(inputFile);
+                        if ( _passwordProtectedChecker.IsFileProtected ( inputFile ).Protected )
+                            ThrowPasswordProtected ( inputFile );
 
                         // PowerPoint 2007 - 2013
-                        result = ExtractFromOfficeOpenXmlFormat(inputFile, "/ppt/embeddings/", outputFolder, "PowerPoint");
+                        result = ExtractFromOfficeOpenXmlFormat ( inputFile, EmbeddingPartString_PowerPoint, outputFolder, "PowerPoint" );
                         break;
+
+                    case ".VSDX":
+                    case ".VSDM":
+                    case ".VSSX":
+                    case ".VSSM":
+                    case ".VSTX":
+                    case ".VSTM":
+                        // Visio -2016
+                        return ExtractFromOfficeOpenXmlFormat ( inputFile, EmbeddingPartString_Visio, outputFolder, "Visio" );
 
                     default:
                         var message = "The file '" + Path.GetFileName(inputFile) +
                                       "' is not supported, only .ODT, .DOC, .DOCM, .DOCX, .DOT, .DOTM, .DOTX, .RTF, .XLS, .XLSB, .XLSM, .XLSX, .XLT, " +
                                       ".XLTM, .XLTX, .XLW, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM and .PPTX are supported";
 
-                        Logger.WriteToLog(message);
-                        throw new OEFileTypeNotSupported(message);
+                        Logger.WriteToLog ( message );
+                        throw new OEFileTypeNotSupported ( message );
                 }
             }
-            catch (CFCorruptedFileException)
+            catch ( CFCorruptedFileException )
             {
-                throw new OEFileIsCorrupt($"The file '{Path.GetFileName(inputFile)}' is corrupt");
+                throw new OEFileIsCorrupt ( $"The file '{Path.GetFileName ( inputFile )}' is corrupt" );
             }
-            catch (Exception exception)
+            catch ( Exception exception )
             {
-                Logger.WriteToLog($"Cant check for embedded object because an error occured, error: {exception.Message}");
+                Logger.WriteToLog ( $"Cant check for embedded object because an error occured, error: {exception.Message}" );
                 throw;
             }
 
             var count = result.Count;
-            Logger.WriteToLog($"Found {count} embedded object{(count == 1 ? string.Empty : "s")}");
+            Logger.WriteToLog ( $"Found {count} embedded object{( count == 1 ? string.Empty : "s" )}" );
             return result;
         }
         #endregion
@@ -418,66 +454,144 @@ namespace OfficeExtractor
         /// <param name="programm"></param>
         /// <returns>List with files or an empty list when there are nog embedded files</returns>
         /// <exception cref="OEFileIsPasswordProtected">Raised when the Microsoft Office file is password protected</exception>
-        private List<string> ExtractFromOfficeOpenXmlFormat(string inputFile, string embeddingPartString, string outputFolder, string programm)
+        private List<string> ExtractFromOfficeOpenXmlFormat ( string inputFile, string embeddingPartString, string outputFolder, string programm )
         {
-            Logger.WriteToLog($"The {programm} file is of the type 'Open XML format'");
+            Logger.WriteToLog ( $"The {programm} file is of the type 'Open XML format'" );
 
             var result = new List<string>();
+            var xmlOfficeType = GetXmlOfficeType(embeddingPartString);
 
-            using (var inputFileMemoryStream = new MemoryStream(File.ReadAllBytes(inputFile)))
+
+            using ( var inputFileStream = new AutoCloseTempFileStream ( new FileStream ( inputFile, FileMode.Open, FileAccess.Read, FileShare.None ),  disposeInputStream: true ) )
             {
                 try
                 {
-                    var package = Package.Open(inputFileMemoryStream);
+                    var package = Package.Open(inputFileStream);
 
                     // Get the embedded files names. 
-                    foreach (var packagePart in package.GetParts())
+                    foreach ( var packagePart in package.GetParts () )
                     {
-                        if (packagePart.Uri.ToString().StartsWith(embeddingPartString))
+                        if ( packagePart.Uri.ToString ().StartsWith ( embeddingPartString, StringComparison.InvariantCultureIgnoreCase ) )
                         {
-                            using (var packagePartStream = packagePart.GetStream())
-                            using (var packagePartMemoryStream = new MemoryStream())
+                            try
                             {
-                                packagePartStream.CopyTo(packagePartMemoryStream);
+                                bool doExtract = true;
 
-                                var fileName = outputFolder +
-                                               packagePart.Uri.ToString().Remove(0, embeddingPartString.Length);
-                                
-                                if (fileName.ToUpperInvariant().Contains("OLEOBJECT"))
+                                if ( null != BeforeOfficeXmlExtract )
                                 {
-                                    Logger.WriteToLog("OLEOBJECT found");
-                                    
-                                    using (var compoundFile = new CompoundFile(packagePartMemoryStream))
+                                    var arg = new BeforeExtractFromOfficeOpenXmlFormatEventArgs(package, packagePart, xmlOfficeType, embeddingPartString);
+                                    BeforeOfficeXmlExtract ( this, arg );
+
+                                    if ( arg.Cancel )
+                                        doExtract = false;
+                                }
+
+                                if ( doExtract )
+                                {
+                                    //using ( var packagePartStream = packagePart.GetStream () )
+                                    using ( AutoCloseTempFileStream packagePartStream = packagePart.GetStream () )
                                     {
-                                        var resultFileName = Extraction.SaveFromStorageNode(compoundFile.RootStorage, outputFolder);
-                                        if (resultFileName != null)
-                                            result.Add(resultFileName);
-                                        //result.Add(ExtractFileFromOle10Native(packagePartMemoryStream.ToArray(), outputFolder));
+                                        //packagePartStream.CopyTo ( packagePartMemoryStream );
+
+                                        var fileName = outputFolder +
+                                                   packagePart.Uri.ToString().Remove(0, embeddingPartString.Length);
+
+                                        if ( fileName.ToUpperInvariant ().Contains ( "OLEOBJECT" ) )
+                                        {
+                                            Logger.WriteToLog ( "OLEOBJECT found" );
+
+                                            using ( var compoundFile = new CompoundFile ( packagePartStream ) )
+                                            {
+                                                var resultFileName = Extraction.SaveFromStorageNode(compoundFile.RootStorage, outputFolder);
+                                                if ( resultFileName != null )
+                                                    result.Add ( resultFileName );
+                                                //result.Add(ExtractFileFromOle10Native(packagePartMemoryStream.ToArray(), outputFolder));
+                                            }
+                                        }
+                                        else
+                                        {
+                                            fileName = FileManager.FileExistsMakeNew ( fileName );
+                                            using ( var outStream = new FileStream ( fileName, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096 ) )
+                                            {
+                                                packagePartStream.FileStream.CopyTo ( outStream );
+                                            }
+                                            //File.WriteAllBytes ( fileName, packagePartMemoryStream.ToArray () );
+                                            result.Add ( fileName );
+                                        }
+
+                                        if ( null != AfterOfficeXmlExctract )
+                                        {
+                                            var arg = new AfterExtractFromOfficeOpenXmlFormatEventArgs(package, packagePart, xmlOfficeType, embeddingPartString, fileName);
+                                            AfterOfficeXmlExctract ( this, arg );
+                                        }
                                     }
                                 }
-                                else
+                            }
+                            catch ( FileFormatException )
+                            {
+                                throw;
+                            }
+                            catch ( System.Exception ex )
+                            {
+                                bool throwNext = false;
+                                if ( null != ErrorOfficeXmlExctractor )
                                 {
-                                    fileName = FileManager.FileExistsMakeNew(fileName);
-                                    File.WriteAllBytes(fileName, packagePartMemoryStream.ToArray());
-                                    result.Add(fileName);
+                                    var arg = new ErrorExtractFromOfficeOpenXmlFormatEventArgs(package, packagePart, xmlOfficeType, embeddingPartString, ex);
+                                    ErrorOfficeXmlExctractor ( this, arg );
+                                    throwNext = arg.Cancel;
+                                }
+
+                                if ( throwNext )
+                                {
+                                    package.Close ();
+                                    throw ex;
                                 }
                             }
                         }
                     }
-                    package.Close();
+                    package.Close ();
 
                     return result;
                 }
-                catch (FileFormatException fileFormatException)
+                catch ( FileFormatException fileFormatException )
                 {
-                    if (!fileFormatException.Message.Equals("File contains corrupted data.",
-                            StringComparison.InvariantCultureIgnoreCase))
+                    if ( !fileFormatException.Message.Equals ( "File contains corrupted data.",
+                            StringComparison.InvariantCultureIgnoreCase ) )
                         return result;
+                }
+
+            }
+
+
+
+            return result;
+        }
+
+        ///-------------------------------------------------------------------------------------------------
+        /// <summary>   Gets XML office type. </summary>
+        ///
+        /// <param name="embeddingPartString">  The folder in the Office Open XML format (zip) file.
+        /// </param>
+        ///
+        /// <returns>   The XML office type. </returns>
+        ///-------------------------------------------------------------------------------------------------
+
+        internal OfficeXmlDocumentType GetXmlOfficeType ( String embeddingPartString )
+        {
+            var aEmbeddingParts = new String[] { EmbeddingPartString_Word, EmbeddingPartString_Excel, EmbeddingPartString_PowerPoint, EmbeddingPartString_Visio };
+            var result = OfficeXmlDocumentType.DocType_Unknown;
+
+            for ( int inx = 0; inx < aEmbeddingParts.Length && result == OfficeXmlDocumentType.DocType_Unknown; ++inx )
+            {
+                if ( 0 == StringComparer.InvariantCultureIgnoreCase.Compare ( embeddingPartString, aEmbeddingParts[inx] ) )
+                {
+                    result = ( OfficeXmlDocumentType )inx;
                 }
             }
 
             return result;
         }
+
         #endregion
 
         #region ExtractFromOpenDocumentFormat
@@ -488,15 +602,15 @@ namespace OfficeExtractor
         /// <param name="entryName">The name of the entry, which is the file or directory name.
         /// The search is done case insensitive.</param>
         /// <returns>Returns the reference of the entry if found and null if the entry doesn't exists in the archive.</returns>
-        private SharpCompress.Archives.IArchiveEntry FindEntryByName(SharpCompress.Archives.IArchive archive, string entryName)
+        private SharpCompress.Archives.IArchiveEntry FindEntryByName ( SharpCompress.Archives.IArchive archive, string entryName )
         {
             try
             {
                 return
-                    archive.Entries.First(
-                        archiveEntry => archiveEntry.Key.Equals(entryName, StringComparison.OrdinalIgnoreCase));
+                    archive.Entries.First (
+                        archiveEntry => archiveEntry.Key.Equals ( entryName, StringComparison.OrdinalIgnoreCase ) );
             }
-            catch (InvalidOperationException)
+            catch ( InvalidOperationException )
             {
                 return null;
             }
@@ -511,57 +625,58 @@ namespace OfficeExtractor
         /// <param name="programm"></param>
         /// <returns>List with files or en empty list when there are nog embedded files</returns>
         /// <exception cref="OEFileIsPasswordProtected">Raised when the OpenDocument format file is password protected</exception>
-        private List<string> ExtractFromOpenDocumentFormat(string inputFile, string outputFolder, string programm)
+        private List<string> ExtractFromOpenDocumentFormat ( string inputFile, string outputFolder, string programm )
         {
-            Logger.WriteToLog($"The {programm} file is of the type 'Open document format'");
+            Logger.WriteToLog ( $"The {programm} file is of the type 'Open document format'" );
 
             var result = new List<string>();
-            using(var zipFile = SharpCompress.Archives.Zip.ZipArchive.Open(inputFile))
+            using ( var zipFile = SharpCompress.Archives.Zip.ZipArchive.Open ( inputFile ) )
             {
                 // Check if the file is password protected
                 var manifestEntry = FindEntryByName(zipFile, "META-INF/manifest.xml");
-                if (manifestEntry != null)
+                if ( manifestEntry != null )
                 {
-                    using (var manifestEntryStream = manifestEntry.OpenEntryStream())
-                    using (var manifestEntryMemoryStream = new MemoryStream())
+                    using ( var manifestEntryStream = manifestEntry.OpenEntryStream () )
+                    using ( var manifestEntryMemoryStream = new AutoCloseTempFileStream () )
                     {
-                        manifestEntryStream.CopyTo(manifestEntryMemoryStream);
+                        manifestEntryStream.CopyTo ( manifestEntryMemoryStream );
                         manifestEntryMemoryStream.Position = 0;
-                        using (var streamReader = new StreamReader(manifestEntryMemoryStream))
+                        using ( var streamReader = new StreamReader ( manifestEntryMemoryStream ) )
                         {
                             var manifest = streamReader.ReadToEnd();
-                            if (manifest.ToUpperInvariant().Contains("ENCRYPTION-DATA"))
-                                throw new OEFileIsPasswordProtected($"The file '{Path.GetFileName(inputFile)}' is password protected");
+                            if ( manifest.ToUpperInvariant ().Contains ( "ENCRYPTION-DATA" ) )
+                                throw new OEFileIsPasswordProtected ( $"The file '{Path.GetFileName ( inputFile )}' is password protected" );
                         }
                     }
                 }
 
-                foreach (var zipEntry in zipFile.Entries)
+                foreach ( var zipEntry in zipFile.Entries )
                 {
-                    if (zipEntry.IsDirectory) continue;
-                    if (zipEntry.IsEncrypted)
-                        throw new OEFileIsPasswordProtected($"The file '{Path.GetFileName(inputFile)}' is password protected");
+                    if ( zipEntry.IsDirectory )
+                        continue;
+                    if ( zipEntry.IsEncrypted )
+                        throw new OEFileIsPasswordProtected ( $"The file '{Path.GetFileName ( inputFile )}' is password protected" );
 
                     var name = zipEntry.Key.ToUpperInvariant();
-                    if (!name.StartsWith("OBJECT") || name.Contains("/"))
+                    if ( !name.StartsWith ( "OBJECT" ) || name.Contains ( "/" ) )
                         continue;
 
                     string fileName = null;
 
                     var objectReplacementFile = FindEntryByName(zipFile, "ObjectReplacements/" + name);
-                    if (objectReplacementFile != null)
-                        fileName = Extraction.GetFileNameFromObjectReplacementFile(objectReplacementFile);
+                    if ( objectReplacementFile != null )
+                        fileName = Extraction.GetFileNameFromObjectReplacementFile ( objectReplacementFile );
 
-                    Logger.WriteToLog($"Extracting embedded object '{fileName}'");
+                    Logger.WriteToLog ( $"Extracting embedded object '{fileName}'" );
 
-                    using (var zipEntryStream = zipEntry.OpenEntryStream())
-                    using (var zipEntryMemoryStream = new MemoryStream())
+                    using ( var zipEntryStream = zipEntry.OpenEntryStream () )
+                    using ( var zipEntryMemoryStream = new AutoCloseTempFileStream () )
                     {
-                        zipEntryStream.CopyTo(zipEntryMemoryStream);
+                        zipEntryStream.CopyTo ( zipEntryMemoryStream );
 
-                        using (var compoundFile = new CompoundFile(zipEntryMemoryStream))
-                            result.Add(Extraction.SaveFromStorageNode(compoundFile.RootStorage, outputFolder,
-                                fileName));
+                        using ( var compoundFile = new CompoundFile ( zipEntryMemoryStream ) )
+                            result.Add ( Extraction.SaveFromStorageNode ( compoundFile.RootStorage, outputFolder,
+                                fileName ) );
                     }
                 }
             }
