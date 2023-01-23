@@ -84,7 +84,7 @@ namespace OfficeExtractor.Ole
         /// <param name="data"></param>
         private void ParsePackage(byte[] data)
         {
-            using (var memoryStream = new MemoryStream(data))
+            using (var memoryStream = new AutoCloseTempFileStream(data))
             using (var binaryReader = new BinaryReader(memoryStream))
             {
                 // Check signature

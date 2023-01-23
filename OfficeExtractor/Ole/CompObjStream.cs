@@ -63,7 +63,7 @@ namespace OfficeExtractor.Ole
         /// <param name="stream">The Compound File Storage CompObj <see cref="CFStream" /></param>
         internal CompObjStream(CFStream stream)
         {
-            using (var memoryStream = new MemoryStream(stream.GetData()))
+            using (var memoryStream = new AutoCloseTempFileStream(stream.GetData()))
             using (var binaryReader = new BinaryReader(memoryStream))
             {
                 // Reserved1 (4 bytes): This can be set to any arbitrary value and MUST be ignored on processing.

@@ -461,93 +461,93 @@ namespace OfficeExtractor
             var result = new List<string>();
             var xmlOfficeType = GetXmlOfficeType(embeddingPartString);
 
-
-            using ( var inputFileStream = new AutoCloseTempFileStream ( new FileStream ( inputFile, FileMode.Open, FileAccess.Read, FileShare.None ),  disposeInputStream: true ) )
+            using ( var inputFileStream = new AutoCloseTempFileStream ( new FileStream ( inputFile, FileMode.Open, FileAccess.Read, FileShare.None ), disposeInputStream: true ) )
             {
                 try
                 {
                     var package = Package.Open(inputFileStream);
 
+                    var resParts = package.GetParts().Where( part => part.Uri.ToString().StartsWith(embeddingPartString, StringComparison.InvariantCultureIgnoreCase )).ToList();
+
                     // Get the embedded files names. 
-                    foreach ( var packagePart in package.GetParts () )
+                    foreach ( var packagePart in resParts )
                     {
-                        if ( packagePart.Uri.ToString ().StartsWith ( embeddingPartString, StringComparison.InvariantCultureIgnoreCase ) )
+
+                        try
                         {
-                            try
+                            bool doExtract = true;
+
+                            if ( null != BeforeOfficeXmlExtract )
                             {
-                                bool doExtract = true;
+                                var arg = new BeforeExtractFromOfficeOpenXmlFormatEventArgs(package, packagePart, xmlOfficeType, embeddingPartString);
+                                BeforeOfficeXmlExtract ( this, arg );
 
-                                if ( null != BeforeOfficeXmlExtract )
+                                if ( arg.Cancel )
+                                    doExtract = false;
+                            }
+
+                            if ( doExtract )
+                            {
+                                //using ( var packagePartStream = packagePart.GetStream () )
+                                using ( var packagePartStream = new AutoCloseTempFileStream(packagePart.GetStream (),disposeInputStream:true) )
                                 {
-                                    var arg = new BeforeExtractFromOfficeOpenXmlFormatEventArgs(package, packagePart, xmlOfficeType, embeddingPartString);
-                                    BeforeOfficeXmlExtract ( this, arg );
+                                    //packagePartStream.CopyTo ( packagePartMemoryStream );
 
-                                    if ( arg.Cancel )
-                                        doExtract = false;
-                                }
-
-                                if ( doExtract )
-                                {
-                                    //using ( var packagePartStream = packagePart.GetStream () )
-                                    using ( AutoCloseTempFileStream packagePartStream = packagePart.GetStream () )
-                                    {
-                                        //packagePartStream.CopyTo ( packagePartMemoryStream );
-
-                                        var fileName = outputFolder +
+                                    var fileName = outputFolder +
                                                    packagePart.Uri.ToString().Remove(0, embeddingPartString.Length);
 
-                                        if ( fileName.ToUpperInvariant ().Contains ( "OLEOBJECT" ) )
-                                        {
-                                            Logger.WriteToLog ( "OLEOBJECT found" );
+                                    if ( fileName.ToUpperInvariant ().Contains ( "OLEOBJECT" ) )
+                                    {
+                                        Logger.WriteToLog ( "OLEOBJECT found" );
 
-                                            using ( var compoundFile = new CompoundFile ( packagePartStream ) )
-                                            {
-                                                var resultFileName = Extraction.SaveFromStorageNode(compoundFile.RootStorage, outputFolder);
-                                                if ( resultFileName != null )
-                                                    result.Add ( resultFileName );
-                                                //result.Add(ExtractFileFromOle10Native(packagePartMemoryStream.ToArray(), outputFolder));
-                                            }
-                                        }
-                                        else
+                                        using ( var compoundFile = new CompoundFile ( packagePartStream ) )
                                         {
-                                            fileName = FileManager.FileExistsMakeNew ( fileName );
-                                            using ( var outStream = new FileStream ( fileName, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096 ) )
-                                            {
-                                                packagePartStream.FileStream.CopyTo ( outStream );
-                                            }
-                                            //File.WriteAllBytes ( fileName, packagePartMemoryStream.ToArray () );
-                                            result.Add ( fileName );
+                                            var resultFileName = Extraction.SaveFromStorageNode(compoundFile.RootStorage, outputFolder);
+                                            if ( resultFileName != null )
+                                                result.Add ( resultFileName );
+                                            //result.Add(ExtractFileFromOle10Native(packagePartMemoryStream.ToArray(), outputFolder));
                                         }
+                                    }
+                                    else
+                                    {
+                                        fileName = FileManager.FileExistsMakeNew ( fileName );
+                                        using ( var outStream = new FileStream ( fileName, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096 ) )
+                                        {
+                                            packagePartStream.FileStream.CopyTo ( outStream );
+                                        }
+                                        //File.WriteAllBytes ( fileName, packagePartMemoryStream.ToArray () );
+                                        result.Add ( fileName );
+                                    }
 
-                                        if ( null != AfterOfficeXmlExctract )
-                                        {
-                                            var arg = new AfterExtractFromOfficeOpenXmlFormatEventArgs(package, packagePart, xmlOfficeType, embeddingPartString, fileName);
-                                            AfterOfficeXmlExctract ( this, arg );
-                                        }
+                                    if ( null != AfterOfficeXmlExctract )
+                                    {
+                                        var arg = new AfterExtractFromOfficeOpenXmlFormatEventArgs(package, packagePart, xmlOfficeType, embeddingPartString, fileName);
+                                        AfterOfficeXmlExctract ( this, arg );
                                     }
                                 }
                             }
-                            catch ( FileFormatException )
+                        }
+                        catch ( FileFormatException )
+                        {
+                            throw;
+                        }
+                        catch ( System.Exception ex )
+                        {
+                            bool throwNext = false;
+                            if ( null != ErrorOfficeXmlExctractor )
                             {
-                                throw;
+                                var arg = new ErrorExtractFromOfficeOpenXmlFormatEventArgs(package, packagePart, xmlOfficeType, embeddingPartString, ex);
+                                ErrorOfficeXmlExctractor ( this, arg );
+                                throwNext = arg.Cancel;
                             }
-                            catch ( System.Exception ex )
-                            {
-                                bool throwNext = false;
-                                if ( null != ErrorOfficeXmlExctractor )
-                                {
-                                    var arg = new ErrorExtractFromOfficeOpenXmlFormatEventArgs(package, packagePart, xmlOfficeType, embeddingPartString, ex);
-                                    ErrorOfficeXmlExctractor ( this, arg );
-                                    throwNext = arg.Cancel;
-                                }
 
-                                if ( throwNext )
-                                {
-                                    package.Close ();
-                                    throw ex;
-                                }
+                            if ( throwNext )
+                            {
+                                package.Close ();
+                                throw ex;
                             }
                         }
+
                     }
                     package.Close ();
 
@@ -561,8 +561,6 @@ namespace OfficeExtractor
                 }
 
             }
-
-
 
             return result;
         }
@@ -636,7 +634,7 @@ namespace OfficeExtractor
                 var manifestEntry = FindEntryByName(zipFile, "META-INF/manifest.xml");
                 if ( manifestEntry != null )
                 {
-                    using ( var manifestEntryMemoryStream = new AutoCloseTempFileStream ( manifestEntry.OpenEntryStream (), false,true ) )
+                    using ( var manifestEntryMemoryStream = new AutoCloseTempFileStream ( manifestEntry.OpenEntryStream (), false, true ) )
                     {
                         //manifestEntryStream.CopyTo ( manifestEntryMemoryStream );
                         //manifestEntryMemoryStream.Position = 0;

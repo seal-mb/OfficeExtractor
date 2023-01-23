@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using OfficeExtractor.Helpers;
 using OpenMcdf;
 
 //
@@ -120,7 +121,7 @@ namespace OfficeExtractor.Ole
         /// <param name="stream">The Compound File Storage Ole <see cref="CFStream" /></param>
         internal OleStream(CFStream stream)
         {
-            using (var memoryStream = new MemoryStream(stream.GetData()))
+            using (var memoryStream = new AutoCloseTempFileStream(stream.GetData()))
             using (var binaryReader = new BinaryReader(memoryStream))
             {
                 Version = binaryReader.ReadUInt16();

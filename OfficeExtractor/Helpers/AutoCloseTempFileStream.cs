@@ -137,7 +137,7 @@ namespace OfficeExtractor.Helpers
 
         public static implicit operator AutoCloseTempFileStream ( Stream stream )
         {
-            return new AutoCloseTempFileStream ( stream, true );
+            return new AutoCloseTempFileStream ( stream );
         }
 
         ///-------------------------------------------------------------------------------------------------

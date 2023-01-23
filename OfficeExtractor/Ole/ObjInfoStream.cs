@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.IO;
+using OfficeExtractor.Helpers;
 using OpenMcdf;
 
 //
@@ -123,7 +124,7 @@ namespace OfficeExtractor.Ole
         /// <param name="stream">The Compound File Storage CompObj <see cref="CFStream" /></param>
         internal ObjInfoStream(CFStream stream)
         {
-            using (var memoryStream = new MemoryStream(stream.GetData()))
+            using (var memoryStream = new AutoCloseTempFileStream(stream.GetData()))
             using (var binaryReader = new BinaryReader(memoryStream))
             {
                 var bytes = binaryReader.ReadBytes(2);

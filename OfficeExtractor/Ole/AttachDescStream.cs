@@ -101,7 +101,7 @@ namespace OfficeExtractor.Ole
         /// <param name="stream">The Compound File Storage AttachDesc <see cref="CFStream" /></param>
         internal AttachDescStream(CFStream stream)
         {
-            using (var memoryStream = new MemoryStream(stream.GetData()))
+            using (var memoryStream = new AutoCloseTempFileStream(stream.GetData()))
             using (var binaryReader = new BinaryReader(memoryStream))
             {
                 Version = binaryReader.ReadUInt16();
