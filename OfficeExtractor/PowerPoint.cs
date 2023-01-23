@@ -90,7 +90,7 @@ namespace OfficeExtractor
                 using (var memoryStream = new AutoCloseTempFileStream(stream.GetData()))
                 using (var binaryReader = new BinaryReader(memoryStream))
                 {
-                    while (binaryReader.BaseStream.Position != memoryStream.Length)
+                    while (!binaryReader.EOF())
                     {
                         var verAndInstance = binaryReader.ReadUInt16();
                         // ReSharper disable once UnusedVariable

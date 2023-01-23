@@ -134,7 +134,7 @@ namespace OfficeExtractor
 
                     binaryReader.BaseStream.Position += recordLength;
 
-                    while (binaryReader.BaseStream.Position < binaryReader.BaseStream.Length)
+                    while (!binaryReader.EOF())
                     {
                         recordType = binaryReader.ReadUInt16();
                         recordLength = binaryReader.ReadUInt16();

@@ -50,19 +50,17 @@ namespace OfficeExtractor.Helpers
         private const int MaxFileNameLength = 255;
         #endregion
 
-        
-
         #region CheckForDirectorySeparator
         /// <summary>
         /// Check if there is a directory separator char at the end of the string and if not add it
         /// </summary>
         /// <param name="line"></param>
         /// <returns></returns>
-        public static string CheckForDirectorySeparator(string line)
+        public static string CheckForDirectorySeparator ( string line )
         {
             var separator = Path.DirectorySeparatorChar.ToString();
 
-            if (line.EndsWith(separator))
+            if ( line.EndsWith ( separator ) )
                 return line;
 
             return line + separator;
@@ -79,28 +77,29 @@ namespace OfficeExtractor.Helpers
         /// <returns></returns>
         /// <exception cref="ArgumentException">Raised when no path or file name is given in the <paramref name="fileName"/></exception>
         /// <exception cref="PathTooLongException">Raised when it is not possible to truncate the <paramref name="fileName"/></exception>
-        public static string FileExistsMakeNew(string fileName, bool validateLongFileName = true,
-            int extraTruncateSize = -1)
+        public static string FileExistsMakeNew ( string fileName,
+                                               bool validateLongFileName = true,
+                                               int extraTruncateSize = -1 )
         {
             var tempFileName = fileName;
-            var fileNameWithoutExtension = GetFileNameWithoutExtension(fileName);
-            var extension = GetExtension(fileName);
+            var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+            var extension = Path.GetExtension(fileName);
             var path = CheckForDirectorySeparator(GetDirectoryName(fileName));
 
-            if (fileNameWithoutExtension.Length + extension.Length > MaxFileNameLength)
+            if ( fileNameWithoutExtension.Length + extension.Length > MaxFileNameLength )
             {
-                fileNameWithoutExtension = fileNameWithoutExtension.Substring(0, MaxFileNameLength - extension.Length);
+                fileNameWithoutExtension = fileNameWithoutExtension.Substring ( 0, MaxFileNameLength - extension.Length );
                 tempFileName = path + fileName;
             }
 
-            tempFileName = validateLongFileName ? ValidateLongFileName(tempFileName, extraTruncateSize) : tempFileName;
+            tempFileName = validateLongFileName ? ValidateLongFileName ( tempFileName, extraTruncateSize ) : tempFileName;
 
             var i = 2;
-            while (File.Exists(tempFileName))
+            while ( File.Exists ( tempFileName ) )
             {
                 tempFileName = path + fileNameWithoutExtension + "_" + i + extension;
                 tempFileName = validateLongFileName
-                    ? ValidateLongFileName(tempFileName, extraTruncateSize)
+                    ? ValidateLongFileName ( tempFileName, extraTruncateSize )
                     : tempFileName;
                 i += 1;
             }
@@ -115,15 +114,15 @@ namespace OfficeExtractor.Helpers
         /// </summary>
         /// <param name="fileName"></param>
         /// <returns></returns>
-        public static string RemoveInvalidFileNameChars(string fileName)
+        public static string RemoveInvalidFileNameChars ( string fileName )
         {
-            if (string.IsNullOrEmpty(fileName))
+            if ( string.IsNullOrEmpty ( fileName ) )
                 return fileName;
 
             var result = Path.GetInvalidFileNameChars()
                 .Aggregate(fileName, (current, c) => current.Replace(c.ToString(CultureInfo.InvariantCulture),$"{((int)c):X}"/* $"0x{((int)c):X2}"*/));
 
-            result = result.Replace(",", string.Empty);
+            result = result.Replace ( ",", string.Empty );
 
             return result;
         }
@@ -140,37 +139,43 @@ namespace OfficeExtractor.Helpers
         /// <returns></returns>
         /// <exception cref="ArgumentException">Raised when no path or file name is given in the <paramref name="fileName"/></exception>
         /// <exception cref="PathTooLongException">Raised when it is not possible to truncate the <paramref name="fileName"/></exception>
-        public static string ValidateLongFileName(string fileName, int extraTruncateSize = -1)
+        public static string ValidateLongFileName ( string fileName, int extraTruncateSize = -1 )
         {
-            var fileNameWithoutExtension = GetFileNameWithoutExtension(fileName);
+
+            var path = Path.GetDirectoryName(fileName);
+
+            if ( string.IsNullOrWhiteSpace ( path ) )
+                throw new ArgumentException ( @"No path is given, e.g. c:\temp\temp.txt", nameof ( fileName ) );
+
+            var fiNameWithExtension = Extractor.ReplaceDisallowedCharsInFileNames ? RemoveInvalidFileNameChars(Path.GetFileName(fileName)) : Path.GetFileName(fileName);
+
+            fileName = Path.Combine ( path, $"{fiNameWithExtension}" );
+
+            if ( fileName.Length <= MaxPath )
+                return fileName;
+
+            var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
 
             //if (string.IsNullOrWhiteSpace(fileNameWithoutExtension))
             //    throw new ArgumentException(@"No file name is given, e.g. c:\temp\temp.txt", nameof(fileName));
 
-            var extension = GetExtension(fileName);
+            var extension = Path.GetExtension(fileName);
 
-            if (string.IsNullOrWhiteSpace(extension))
+            if ( string.IsNullOrWhiteSpace ( extension ) )
                 extension = string.Empty;
 
-            var path = GetDirectoryName(fileName);
+            path = CheckForDirectorySeparator ( path );
 
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException(@"No path is given, e.g. c:\temp\temp.txt", nameof(fileName));
-
-            path = CheckForDirectorySeparator(path);
-
-            if (fileName.Length <= MaxPath)
-                return fileName;
 
             var maxFileNameLength = MaxPath - path.Length - extension.Length;
-            if (extraTruncateSize != -1)
+            if ( extraTruncateSize != -1 )
                 maxFileNameLength -= extraTruncateSize;
 
-            if (maxFileNameLength < 1)
-                throw new PathTooLongException("Unable the truncate the fileName '" + fileName + "', current size '" +
-                                               fileName.Length + "'");
+            if ( maxFileNameLength < 1 )
+                throw new PathTooLongException ( "Unable the truncate the fileName '" + fileName + "', current size '" +
+                                               fileName.Length + "'" );
 
-            return path + fileNameWithoutExtension.Substring(0, maxFileNameLength) + extension;
+            return Path.Combine ( path, ( fileNameWithoutExtension.Substring ( 0, maxFileNameLength ) + extension ) );
         }
         #endregion
 
@@ -181,22 +186,23 @@ namespace OfficeExtractor.Helpers
         /// <param name="path">The path of the file</param>
         /// <returns></returns>
         /// <exception cref="ArgumentException">Raised when no path is given</exception>
-        public static string GetExtension(string path)
+        public static string GetExtension ( string path )
         {
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("path");
+            if ( string.IsNullOrWhiteSpace ( path ) )
+                throw new ArgumentException ( "path" );
 
-            var splittedPath = path.Split(Path.DirectorySeparatorChar);
-            var fileName = splittedPath[splittedPath.Length - 1];
-
-            var index = fileName.LastIndexOf(".", StringComparison.Ordinal);
-
-            return index == -1
-                ? string.Empty
-                : fileName.Substring(fileName.LastIndexOf(".", StringComparison.Ordinal), fileName.Length - index);
+            return Path.GetExtension ( path );
+            // 
+            //             var splittedPath = path.Split(Path.DirectorySeparatorChar);
+            //             var fileName = splittedPath[splittedPath.Length - 1];
+            // 
+            //             var index = fileName.LastIndexOf(".", StringComparison.Ordinal);
+            // 
+            //             return index == -1
+            //                 ? string.Empty
+            //                 : fileName.Substring(fileName.LastIndexOf(".", StringComparison.Ordinal), fileName.Length - index);
         }
         #endregion
-
 
         #region GetFileNameWithoutExtension
         /// <summary>
@@ -205,16 +211,18 @@ namespace OfficeExtractor.Helpers
         /// <param name="path">The path of the file</param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        public static string GetFileNameWithoutExtension(string path)
+        public static string GetFileNameWithoutExtension ( string path )
         {
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException(@"No path given", nameof(path));
+            if ( string.IsNullOrWhiteSpace ( path ) )
+                throw new ArgumentException ( @"No path given", nameof ( path ) );
 
-            var splittedPath = path.Split(Path.DirectorySeparatorChar);
-            var fileName = splittedPath[splittedPath.Length - 1];
-            return !fileName.Contains(".")
-                ? fileName
-                : fileName.Substring(0, fileName.LastIndexOf(".", StringComparison.Ordinal));
+            return Path.GetFileNameWithoutExtension ( path );
+
+            //             var splittedPath = path.Split(Path.DirectorySeparatorChar);
+            //             var fileName = splittedPath[splittedPath.Length - 1];
+            //             return !fileName.Contains(".")
+            //                 ? fileName
+            //                 : fileName.Substring(0, fileName.LastIndexOf(".", StringComparison.Ordinal));
         }
         #endregion
 
@@ -224,7 +232,7 @@ namespace OfficeExtractor.Helpers
         /// </summary>
         /// <param name="path">The path of a file or directory</param>
         /// <returns></returns>
-        public static string GetDirectoryName(string path)
+        public static string GetDirectoryName ( string path )
         {
             //GetDirectoryName('C:\MyDir\MySubDir\myfile.ext') returns 'C:\MyDir\MySubDir'
             //GetDirectoryName('C:\MyDir\MySubDir') returns 'C:\MyDir'
@@ -232,19 +240,51 @@ namespace OfficeExtractor.Helpers
             //GetDirectoryName('C:\MyDir') returns 'C:\'
             //GetDirectoryName('C:\') returns ''
 
-            var splittedPath = path.Split(Path.DirectorySeparatorChar);
+            return Path.GetDirectoryName ( path );
 
-            if (splittedPath.Length <= 1)
-                return string.Empty;
-
-            var result = splittedPath[0];
-
-            for (var i = 1; i < splittedPath.Length - 1; i++)
-                result += Path.DirectorySeparatorChar + splittedPath[i];
-
-            return result;
+            //             var splittedPath = path.Split(Path.DirectorySeparatorChar);
+            // 
+            //             if (splittedPath.Length <= 1)
+            //                 return string.Empty;
+            // 
+            //             var result = splittedPath[0];
+            // 
+            //             for (var i = 1; i < splittedPath.Length - 1; i++)
+            //                 result += Path.DirectorySeparatorChar + splittedPath[i];
+            // 
+            //             return result;
         }
         #endregion
+
+        ///-------------------------------------------------------------------------------------------------
+        /// <summary>   A BinaryReader extension method that eofs the given binary reader. </summary>
+        ///
+        /// <remarks>   seal-mb, 23.01.2023. </remarks>
+        ///
+        /// <param name="binaryReader"> The binaryReader to act on. </param>
+        ///
+        /// <returns>   True if it succeeds, false if it fails. </returns>
+        ///-------------------------------------------------------------------------------------------------
+
+        public static bool EOF ( this BinaryReader binaryReader )
+        {
+            return binaryReader.BaseStream.EOF ();
+        }
+
+        ///-------------------------------------------------------------------------------------------------
+        /// <summary>   A BinaryReader extension method that eofs the given binary reader. </summary>
+        ///
+        /// <remarks>   seal-mb, 23.01.2023. </remarks>
+        ///
+        /// <param name="stream">   The stream to act on. </param>
+        ///
+        /// <returns>   True if it succeeds, false if it fails. </returns>
+        ///-------------------------------------------------------------------------------------------------
+
+        public static bool EOF<_stream> ( this _stream stream ) where _stream : Stream
+        {
+            return ( stream.Position == stream.Length );
+        }
 
         #region IsValidPath
         /// <summary>
@@ -253,19 +293,19 @@ namespace OfficeExtractor.Helpers
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static bool IsValidPath(string path)
+        public static bool IsValidPath ( string path )
         {
             var regex = new Regex(@"^(([a-zA-Z]\:)|(\\))(\\{1}|((\\{1})[^\\]([^/:*?<>""|]*))+)$");
             var result = regex.IsMatch(path);
 
-            if (result)
+            if ( result )
             {
                 try
                 {
                     // ReSharper disable once ReturnValueOfPureMethodIsNotUsed
-                    Path.GetFullPath(path);
+                    Path.GetFullPath ( path );
                 }
-                catch (Exception)
+                catch ( Exception )
                 {
                     return false;
                 }
@@ -275,7 +315,5 @@ namespace OfficeExtractor.Helpers
         }
         #endregion
 
-
-        
     }
 }
