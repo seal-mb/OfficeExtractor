@@ -96,9 +96,9 @@ namespace OfficeExtractor.Helpers
 
             try
             {
-                using ( var zipEntryFileStream = new AutoCloseTempFileStream ( zipEntry.OpenEntryStream (), false,true) )
+                using ( var zipEntryFileStream = new AutoCloseTempFileStream ( zipEntry.OpenEntryStream (), false, true ) )
                 {
-               
+
                     zipEntryFileStream.Position = 0x4470;
                     using ( var binaryReader = new BinaryReader ( zipEntryFileStream ) )
                     {
@@ -369,7 +369,7 @@ namespace OfficeExtractor.Helpers
         /// <param name="outputFile">The output filename with path</param>
         /// <returns></returns>
         /// <exception cref="OfficeExtractor.Exceptions.OEFileIsCorrupt">Raised when the file is corrupt</exception> 
-        internal string SaveByteArrayToFile ( byte[] data, string outputFile )
+        internal string SaveByteArrayToFile ( AutoCloseTempFileStream data, string outputFile )
         {
             // seal-mb
             // Check name of file
@@ -427,7 +427,7 @@ namespace OfficeExtractor.Helpers
                         {
                             var file = Excel.SetWorkbookVisibility(memoryStream);
                             //File.WriteAllBytes(outputFile, file.ToArray());
-                            using(var outFile = new FileStream( outputFile ,FileMode.Create,FileAccess.ReadWrite,FileShare.None,4096) )
+                            using ( var outFile = new FileStream ( outputFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096 ) )
                             {
                                 file.CopyTo ( outFile );
                             }
@@ -435,12 +435,24 @@ namespace OfficeExtractor.Helpers
                         break;
 
                     default:
-                        File.WriteAllBytes ( outputFile, data );
-                        break;
+                    {
+                        using ( var outFile = new FileStream ( outputFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096 ) )
+                        {
+                            data.FileStream.CopyTo ( outFile );
+                        }
+                    }
+                   
+                    break;
                 }
             }
             else
-                File.WriteAllBytes ( outputFile, data );
+            {
+                using ( var outFile = new FileStream ( outputFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096 ) )
+                {
+                    data.FileStream.CopyTo ( outFile );
+                }
+            }
+                
 
             return outputFile;
         }

@@ -504,7 +504,16 @@ namespace OfficeExtractor
                                         {
                                             var resultFileName = Extraction.SaveFromStorageNode(compoundFile.RootStorage, outputFolder);
                                             if ( resultFileName != null )
+                                            {
+                                                Logger.WriteToLog ( $"OLEOBJECT {resultFileName} extracted." );
+                                                fileName = resultFileName;
                                                 result.Add ( resultFileName );
+                                            }
+                                            else
+                                            {
+                                                Logger.WriteToLog ( $"OLEOBJECT {fileName} could not extract." );
+                                            }
+                                                
                                             //result.Add(ExtractFileFromOle10Native(packagePartMemoryStream.ToArray(), outputFolder));
                                         }
                                     }
