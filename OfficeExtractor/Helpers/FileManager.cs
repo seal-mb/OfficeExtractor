@@ -122,8 +122,6 @@ namespace OfficeExtractor.Helpers
             var result = Path.GetInvalidFileNameChars()
                 .Aggregate(fileName, (current, c) => current.Replace(c.ToString(CultureInfo.InvariantCulture),$"{((int)c):X}"/* $"0x{((int)c):X2}"*/));
 
-            result = result.Replace ( ",", string.Empty );
-
             return result;
         }
         #endregion
