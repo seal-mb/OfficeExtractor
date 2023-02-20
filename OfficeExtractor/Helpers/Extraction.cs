@@ -102,7 +102,7 @@ namespace OfficeExtractor.Helpers
                     zipEntryFileStream.Position = 0x4470;
                     using ( var binaryReader = new BinaryReader ( zipEntryFileStream ) )
                     {
-                        while ( !binaryReader.EOF() )
+                        while ( !binaryReader.EOF () )
                         {
                             var value = binaryReader.ReadUInt16();
 
@@ -114,7 +114,7 @@ namespace OfficeExtractor.Helpers
                             zipEntryFileStream.Position += 2;
 
                             // Read until we find the next 0x46 value
-                            while ( !binaryReader.EOF())
+                            while ( !binaryReader.EOF () )
                             {
                                 value = binaryReader.ReadUInt16 ();
                                 if ( value != 0x46 )
@@ -422,14 +422,13 @@ namespace OfficeExtractor.Helpers
                     case ".XLSX":
                     case ".XLTM":
                     case ".XLTX":
-                        // using (var memoryStream = new MemoryStream(data))
+                        //using (var memoryStream = new MemoryStream(data))
                         using ( AutoCloseTempFileStream memoryStream = data )
                         {
-                            var file = Excel.SetWorkbookVisibility(memoryStream);
-                            //File.WriteAllBytes(outputFile, file.ToArray());
-                            using ( var outFile = new FileStream ( outputFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096 ) )
+                            using ( var sprechSheet = Excel.SetWorkbookVisibility ( memoryStream ) )
                             {
-                                file.CopyTo ( outFile );
+                                // File.WriteAllBytes(outputFile, file.ToArray());
+                                sprechSheet.SaveAs ( outputFile );
                             }
                         }
                         break;
@@ -441,7 +440,7 @@ namespace OfficeExtractor.Helpers
                             data.FileStream.CopyTo ( outFile );
                         }
                     }
-                   
+
                     break;
                 }
             }
@@ -452,7 +451,7 @@ namespace OfficeExtractor.Helpers
                     data.FileStream.CopyTo ( outFile );
                 }
             }
-                
+
 
             return outputFile;
         }
